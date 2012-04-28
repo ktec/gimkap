@@ -24,7 +24,7 @@ if __name__ == "__main__":
 	import sys, os
 		
 	def Usage(s = ""):
-		print "Usage: globalmaptiles.py [-profile 'mercator'|'geodetic'] zoomlevel lat lon [latmax lonmax]"
+		print "Usage: gimkap.py zoomlevel lat lon [latmax lonmax]"
 		print
 		if s:
 			print s
@@ -45,10 +45,6 @@ if __name__ == "__main__":
 	while i < len(argv):
 		arg = argv[i]
 
-		if arg == '-profile':
-			i = i + 1
-			profile = argv[i]
-		
 		if zoomlevel is None:
 			zoomlevel = int(argv[i])
 		elif lat is None:
@@ -63,9 +59,6 @@ if __name__ == "__main__":
 			Usage("ERROR: Too many parameters")
 
 		i = i + 1
-	
-	if profile != 'mercator':
-		Usage("ERROR: Sorry, given profile is not implemented yet.")
 	
 	if zoomlevel == None or lat == None or lon == None:
 		Usage("ERROR: Specify at least 'zoomlevel', 'lat' and 'lon'.")
@@ -83,14 +76,10 @@ if __name__ == "__main__":
 	mercator = GlobalMercator()
 
 	mx, my = mercator.LatLonToMeters( lat, lon )
-	#print "Spherical Mercator (ESPG:900913) coordinates for lat/lon: "
-	#print (mx, my)
 	tminx, tminy = mercator.MetersToTile( mx, my, tz )
 	
 	if boundingbox:
 		mx, my = mercator.LatLonToMeters( latmax, lonmax )
-		#print "Spherical Mercator (ESPG:900913) cooridnate for maxlat/maxlon: "
-		#print (mx, my)
 		tmaxx, tmaxy = mercator.MetersToTile( mx, my, tz )
 	else:
 		tmaxx, tmaxy = tminx, tminy
@@ -101,22 +90,13 @@ if __name__ == "__main__":
 	for ty in range(tminy, tmaxy+1):
 		for tx in range(tminx, tmaxx+1):
 			tilefilename = "%s/%s/%s" % (tz, tx, ty)
-			#print tilefilename, "( TileMapService: z / x / y )"
+			print tilefilename, "( TileMapService: z / x / y )"
 		
 			gx, gy = mercator.GoogleTile(tx, ty, tz)
+			print "Google tile: %d, %d" % (gx, gy)
 			tiles.append((gx, gy))
-			#print "\tGoogle:", gx, gy
-			#quadkey = mercator.QuadTree(tx, ty, tz)
-			#print "\tQuadkey:", quadkey, '(',int(quadkey, 4),')'
-			#bounds = mercator.TileBounds( tx, ty, tz)
-			#print
-			#print "\tEPSG:900913 Extent: ", bounds
 			wgsbounds = mercator.TileLatLonBounds( tx, ty, tz)
 			wgs.append(wgsbounds)
-			#print "\tWGS84 Extent:", wgsbounds
-			#print "\tgdalwarp -ts 256 256 -te %s %s %s %s %s %s_%s_%s.tif" % (
-			#	bounds[0], bounds[1], bounds[2], bounds[3], "<your-raster-file-in-epsg900913.ext>", tz, tx, ty)
-			#print
 
 	startx = tiles[0][0]
 	starty = tiles[0][1]
@@ -129,7 +109,14 @@ if __name__ == "__main__":
 	# apparent curl will automagically create directories as required
 	for x in range(startx, endx+1):
 		os.system("mkdir %d" % x)
-
+		for y in range(endy, starty+1):
+			fname = "%d/%d.jpg" % (x,y)
+			if os.path.isfile(fname):
+				print "File %s exists." % fname
+			else:
+				print "Download %s " % fname
+				#os.system( "wget -nc -U \"IE6 on Windows XP: Mozilla/4.0 (compatible; MSIE 6.0; Microsoft Windows NT 5.1)\" http://khm1.google.co.in/kh/v=109&src=app&x=%d&y=%d&z=%d&s=Galil -O %s" % (x,y,zoomlevel,fname) )
+			
 	os.system( '''
 curl -d -S --user-agent "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13" --header "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" --header "Accept-Language: en-US,id-ID;q=0.8,id;q=0.6,en;q=0.4" --header "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3" --header "Keep-Alive: 300" --header "Connection: keep-alive" --cookie cookie.txt "http://khm1.google.co.in/kh/v=109&src=app&x=[%s-%s]&y=[%s-%s]&z=%s&s=Galil" -o "#1/#2.jpg"
 ''' % ( startx,endx,endy,starty,zoomlevel) )
@@ -140,11 +127,13 @@ curl -d -S --user-agent "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; 
 
 	print "Stitching job 2"
 
-	os.system("convert *.jpg +append map.jpg")
+	filename = "%s%s-%s%s" % (startx,starty,endx,endy)
+	os.system("convert *.jpg +append %s.jpg" % filename)
 
 	print "Map is generated in 'map.jpg', you may remove other files"
 
 	print "Creating kap file..."
 
-	print "imgkap map.jpg %f %f %f %f map.kap" % (wgs[0][0], wgs[0][1], wgs[len(wgs)-1][2], wgs[len(wgs)-1][3])
-	os.system("imgkap map.jpg %f %f %f %f map.kap" % (wgs[0][0], wgs[0][1], wgs[len(wgs)-1][2], wgs[len(wgs)-1][3]))
+	create_kap = "imgkap %s.jpg %f %f %f %f %s.kap" % (filename, wgs[0][0], wgs[0][1], wgs[len(wgs)-1][2], wgs[len(wgs)-1][3], filename) 
+	print create_kap
+	os.system( create_kap )

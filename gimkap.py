@@ -90,6 +90,16 @@ def download3(host,path,filename):
 	except MaxRetryError, e:
 	    print "MaxRetryError"
 
+def checkfileisimage(filename):
+	import Image
+	try:
+	    im=Image.open(filename)
+	    im.verify()
+	except IOError:
+		print "The tile %s is not an image file" % filename
+		os.remove(filename)
+		sys.exit(1)
+
 
 if __name__ == "__main__":
 
@@ -110,6 +120,7 @@ if __name__ == "__main__":
 	zoomlevel = None
 	lat, lon, latmax, lonmax = None, None, None, None
 	boundingbox = False
+	dimensions = None
 
 	argv = sys.argv
 	i = 1
@@ -123,7 +134,10 @@ if __name__ == "__main__":
 		elif lon is None:
 			lon = float(argv[i])
 		elif latmax is None:
-			latmax = float(argv[i])
+			try:
+				latmax = float(argv[i])
+			except (ValueError):
+				dimensions = str(argv[i]).split("x")
 		elif lonmax is None:
 			lonmax = float(argv[i])
 		else:
@@ -142,6 +156,9 @@ if __name__ == "__main__":
 		if lonmax < lon:
 			Usage("ERROR: 'lonmax' must be bigger then 'lon'")
 		boundingbox = (lon, lat, lonmax, latmax)
+
+	if dimensions != None:
+		print "%s x %s" % ( dimensions[0], dimensions[1])		
 	
 	tz = zoomlevel
 	mercator = GlobalMercator()
@@ -154,9 +171,19 @@ if __name__ == "__main__":
 		tmaxx, tmaxy = mercator.MetersToTile( mx, my, tz )
 	else:
 		tmaxx, tmaxy = tminx, tminy
+
+	if dimensions:
+		rows = int(dimensions[0])/2
+		cols = int(dimensions[1])/2
+		tminy -= rows
+		tmaxy += rows
+		tminx -= cols
+		tmaxx += cols
 	
 	tiles = []
 	#wgs = []
+	tiles_dir = "tiles"
+	compositions_dir = "compositions"
 	
 	for ty in range(tminy, tmaxy+1):
 		for tx in range(tminx, tmaxx+1):
@@ -164,7 +191,7 @@ if __name__ == "__main__":
 			gx, gy = mercator.GoogleTile(tx, ty, tz)
 			print "Google tile: %d, %d" % (gx, gy)
 			
-			dirname = os.path.join(str(tz), str(gx))
+			dirname = os.path.join(tiles_dir,str(tz), str(gx))
 			tilefilename = os.path.join(dirname, "%s.jpg" % gy)
 			print tilefilename, "( TileMapService: z / x / y )"
 		
@@ -176,6 +203,7 @@ if __name__ == "__main__":
 				gmapsurl = "http://khm1.google.co.in/kh/v=109&src=app&s=Galil"
 				url = "%s&x=%d&y=%d&z=%d" % (gmapsurl, gx, gy, tz)
 				downloadwithcurl(url, tilefilename )
+				#checkfileisimage(tilefilename)
 
 			tiles.append((gx, gy))
 			wgsbounds = mercator.TileLatLonBounds( tx, ty, tz)
@@ -199,7 +227,7 @@ if __name__ == "__main__":
 	try:
 		print "Stitching job 1"
 
-		filename = "%i-%s%s-%s%s" % (tz,startx,starty,endx,endy)
+		filename = os.path.join(compositions_dir,"%i-%s%s-%s%s" % (tz,startx,starty,endx,endy))
 		if not os.path.exists(filename):
 			os.makedirs(filename)
 
@@ -209,8 +237,11 @@ if __name__ == "__main__":
 		
 		for k,v in res.items():
 			convert = "convert "
-			for l in reversed(v): convert += ("%s/%s/%i.jpg " % (tz, k, l))
-			convert += " -append %s/%s.jpg" % (filename, k)
+			for l in reversed(v):
+				tilefilename = os.path.join(tiles_dir,str(tz),str(k),"%i.jpg " % l)
+				#checkfileisimage(tilefilename)
+				convert += tilefilename
+			convert += " -append %s" % os.path.join(filename,"%s.jpg" % k)
 			os.system( convert )
 
 		print "Stitching job 2"

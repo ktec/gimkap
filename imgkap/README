@@ -1,0 +1,10 @@
+Make sure you have freeimage installed:
+sudo apt-get install libfreeimage-dev
+
+Compiling imgkap:
+gcc -I./FreeImage/Source/ imgkap.c -O3 -s -lfreeimage -o imgkap
+
+Ensure you have imgkap in your path:
+mv imgkap ~/bin
+
+

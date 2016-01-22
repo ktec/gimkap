@@ -797,7 +797,7 @@ ul
 
 <p class=MsoNormal align=left style='text-align:left'><span
 class=apple-style-span><b><u><span style='font-size:7.0pt;font-family:Verdana;
-color:black'>imgkap Version 1.0b</span></u></b></span><span style='font-size:
+color:black'>imgkap Version 1.2</span></u></b></span><span style='font-size:
 7.0pt;font-family:Verdana;color:black'><br>
 <br>
 <span class=apple-style-span><b>Install</b></span><span
@@ -828,7 +828,7 @@ color:black'>For Windows&nbsp;:<o:p></o:p></span></span></p>
 <p class=MsoNormal align=left style='margin-right:36.0pt;mso-margin-top-alt:
 auto;mso-margin-bottom-alt:auto;margin-left:36.0pt;text-align:left'><span
 style='font-size:7.0pt;font-family:Verdana;color:black'><br>
-Use imgkap.exe include all code, requires no download FreeImage.<o:p></o:p></span></p>
+Use imgkap.exe include all code of FreeImage vers.3170, requires no download FreeImage.<o:p></o:p></span></p>
 
 <p class=MsoNormal align=left style='text-align:left'><span
 class=apple-style-span><span style='font-size:7.0pt;font-family:Verdana;
@@ -988,7 +988,8 @@ style='font-size:7.0pt;font-family:Verdana;color:black'>• imgkap mykap.png lat0
 lon0 lat1 lon2 myresult.kap : convert myimg.png into myresult.kap using WGS84
 positioning<br>
 • imgkap -s 'LOWEST LOW WATER' myimg.png lat0 lon0 lat1 lon2 -f : convert
-myimg.png into myimg.kap using WGS84 positioning and options<o:p></o:p></span></p>
+myimg.png into myimg.kap using WGS84 positioning and options<br>
+• imgkap mykap.png lat0 lon0 x0;y0 lat1 lon1 x1;y1 myresult.kap<o:p></o:p></span></p>
 
 <p class=MsoNormal align=left style='text-align:left'><span
 class=apple-style-span><span style='font-size:7.0pt;font-family:Verdana;
@@ -1000,7 +1001,10 @@ style='font-size:7.0pt;font-family:Verdana;color:black'>WGS84 positioning :<br>
 lat0 lon0 is a left,top point<span class=apple-converted-space>&nbsp;</span><br>
 lat1 lon1 is a right,bottom point<br>
 lat to be beetwen -85 and +85 degree<br>
-lon to be beetwen -180 and +180 degree<br>
+lon to be beetwen -180 and +180 degree<br><br>
+x;y can be used if lat lon is not a left, top and right, bottom point<br>
+lat0 lon0 x0;y0 must be in the left, upper third of the image<br>
+lat1 lon1 x1;y1 must be in the right, lower third of the image</br><br>
 Different format are accepted&nbsp;: <span style="mso-spacerun: yes">  </span>-1.22
 <span style="mso-spacerun: yes">  </span>1°10'20.123N <span
 style="mso-spacerun: yes">  </span>-1d22.123<o:p></o:p></span></p>
@@ -1014,6 +1018,7 @@ auto;mso-margin-bottom-alt:auto;margin-left:36.0pt;text-align:left'><span
 style='font-size:7.0pt;font-family:Verdana;color:black'>-f : fix units to
 FATHOMS, default : METERS<br>
 -s name : fix souding datum, default : UNKNOWN<br>
+-w : no image size extension to WGS84 because image is already WGS84<br>
 -t &quot;Title&quot;<br>
 Allows you to change the title in the file kap. <br>
 By default the title is of the image file name.<o:p></o:p></span></p>

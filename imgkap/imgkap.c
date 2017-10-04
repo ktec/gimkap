@@ -6,7 +6,7 @@
  *	imgkap.c - Convert kap a file from/to a image file and kml to kap
  */
 
-#define VERS   "1.12"
+#define VERS   "1.3"
 
 #include <stdint.h>
 #include <math.h>
@@ -49,7 +49,7 @@ typedef union
 #define FIF_KML 1027
 
 
-int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, int pixpos0y, double lat1, double lon1, int pixpos1x, int pixpos1y, int optkap,int color,char *title, int units, char *sd, int optionwgs84, char *fileout);
+int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, int pixpos0y, double lat1, double lon1, int pixpos1x, int pixpos1y, int optkap,int color,char *title, int units, char *sd, int optionwgs84, char *optframe, char *fileout);
 int imgheadertokap(int typein,char *filein,int typeheader,int optkap,int color,char *title,char *fileheader,char *fileout);
 int kaptoimg(int typein,char *filein,int typeheader,char *fileheader,int typeout,char *fileout,char *optionpal);
 
@@ -1584,7 +1584,7 @@ int imgheadertokap(int typein,char *filein,int typeheader, int optkap, int color
     return result;
 }
 
-int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, int pixpos0y, double lat1, double lon1, int pixpos1x, int pixpos1y, int optkap, int color, char *title,int units, char *sd,int optionwgs84, char *fileout)
+int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, int pixpos0y, double lat1, double lon1, int pixpos1x, int pixpos1y, int optkap, int color, char *title,int units, char *sd,int optionwgs84, char *optframe, char *fileout)
 {
     uint16_t    dpi,widthout,heightout,widthoutr,heightoutr;
  	uint32_t    widthin,heightin,widthinr,heightinr;
@@ -1605,8 +1605,15 @@ int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, in
 	double		lon1loc = lon1;
 	double		lon1locr, lon0locr, lat1locr, lat0locr;
 	uint16_t	pixpos0xr,pixpos1xr,pixpos0yr,pixpos1yr;
+	int			numxf = 0;
+	int			xf[10];
+	int			yf[10];
+	int 		i,ply = 0;
+	double		plylat[10];
+	double		plylon[10];
 
 	FILE		*out;
+
 
     sunits = "METERS";
     if (units != METTERS) sunits = "FATHOMS";
@@ -1667,7 +1674,7 @@ int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, in
 
 		// calculate the lon,lat of the edges of the image
 		londeg = (lon1 - lon0) / widthinr;
-		lon0loc = lon0 - (pixpos0x * londeg);
+		lon0loc = lon0 - pixpos0x * londeg;
 		lon1loc = lon1 + (widthin -1 -pixpos1x) * londeg;
 		latdeg = (lat0 - lat1) / heightinr;
 		lat0loc = lat0 + pixpos0y * latdeg;
@@ -1694,6 +1701,77 @@ int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, in
 			pixpos0yr = (int)round (pixpos0y * heightoutr / heightinr);
 			pixpos1yr = (int)round (pixpos1y * heightoutr / heightinr);
 	    }
+	}
+
+	// calculate REF positions if cut off an image frame
+	if (optframe != NULL )
+	{
+		londeg = (lon1loc-lon0loc) / widthin;
+		latdeg = (lat0loc-lat1loc) / heightin;
+		numxf = sscanf (optframe, "%d;%d-%d;%d-%d;%d-%d;%d-%d;%d-%d;%d-%d;%d-%d;%d-%d;%d-%d;%d", &xf[0],&yf[0],&xf[1],&yf[1],&xf[2],&yf[2],&xf[3],&yf[3],&xf[4],&yf[4],&xf[5],&yf[5],&xf[6],&yf[6],&xf[7],&yf[7],&xf[8],&yf[8],&xf[9],&yf[9]);
+		ply = 0;
+		switch (numxf)
+		{
+		case 4 :
+			ply = 3;
+			plylon[0] = plylon[3] = lon0loc + (xf[0] * londeg);
+			plylon[1] = plylon[2] = lon1loc - (widthin -1 -xf[1]) * londeg;
+			plylat[0] = plylat[1] = lat0loc - (yf[0] * latdeg);
+			plylat[2] = plylat[3] = lat1loc + (heightin -1 -yf[1]) * latdeg;
+			break;
+		case 20 :
+			ply = 9;
+			plylon[9] = lon0loc + (xf[9] * londeg);
+			plylat[9] = lat0loc - (yf[9] * latdeg);
+		case 18 :
+			if (ply == 0) ply = 8;
+			plylon[8] = lon0loc + (xf[8] * londeg);
+			plylat[8] = lat0loc - (yf[8] * latdeg);
+		case 16 :
+			if (ply == 0) ply = 7;
+			plylon[7] = lon0loc + (xf[7] * londeg);
+			plylat[7] = lat0loc - (yf[7] * latdeg);
+		case 14 :
+			if (ply == 0) ply = 6;
+			plylon[6] = lon0loc + (xf[6] * londeg);
+			plylat[6] = lat0loc - (yf[6] * latdeg);
+		case 12 :
+			if (ply == 0) ply = 5;
+			plylon[5] = lon0loc + (xf[5] * londeg);
+			plylat[5] = lat0loc - (yf[5] * latdeg);
+		case 10 :
+			if (ply == 0) ply = 4;
+			plylon[4] = lon0loc + (xf[4] * londeg);
+			plylat[4] = lat0loc - (yf[4] * latdeg);
+		case 8 :
+			if (ply == 0) ply = 3;
+			plylon[3] = lon0loc + (xf[3] * londeg);
+			plylat[3] = lat0loc - (yf[3] * latdeg);
+		case 6 :
+			if (ply == 0) ply = 2;
+			plylon[0] = lon0loc + (xf[0] * londeg);
+			plylat[0] = lat0loc - (yf[0] * latdeg);
+			plylon[1] = lon0loc + (xf[1] * londeg);
+			plylat[1] = lat0loc - (yf[1] * latdeg);
+			plylon[2] = lon0loc + (xf[2] * londeg);
+			plylat[2] = lat0loc - (yf[2] * latdeg);
+			break;
+
+		default :
+			fprintf(stderr,"ERROR - use -r x0f;y0f-x1f;y1f to define an rectangle area in the image which is visible from the .kap\n");
+			fprintf(stderr,"      - use -r x0f;y0f-x1f;y1f-x2f;y2f ... to define a up to 10 edges polygon which is visible from the .kap\n");
+			FreeImage_Unload(bitmap);
+			fclose(out);
+			return 2;
+		}
+	}
+	else
+	{
+		ply = 3;
+		plylon[0] = plylon[3] = lon0loc;
+		plylon[1] = plylon[2] = lon1loc;
+		plylat[0] = plylat[1] = lat0loc;
+		plylat[2] = plylat[3] = lat1loc;
 	}
 
 	out = fopen(fileout, "wb");
@@ -1820,11 +1898,10 @@ int imgtokap(int typein,char *filein, double lat0, double lon0, int pixpos0x, in
 		fprintf(out,"REF/8,%u,%u,%f,%f\r\n",pixpos0xr,pixpos1yr,lat1,lon0);
     }
 
-    fprintf(out,"PLY/1,%f,%f\r\n",lat0loc,lon0loc);
-    fprintf(out,"PLY/2,%f,%f\r\n",lat0loc,lon1loc);
-    fprintf(out,"PLY/3,%f,%f\r\n",lat1loc,lon1loc);
-    fprintf(out,"PLY/4,%f,%f\r\n",lat1loc,lon0loc);
-
+    for (i=0; i<=ply; i++)
+    {
+    	fprintf(out,"PLY/%u,%f,%f\r\n",i+1,plylat[i],plylon[i]);
+    }
 	//ToDo
     //fprintf(out,"WPX/2...,...\r\n");
     //fprintf(out,"WPY/2...,...\r\n");
@@ -2172,6 +2249,7 @@ int main (int argc, char *argv[])
  	char    fileout[1024];
  	int     typein, typeheader,typeout;
     char    *optionsd ;
+    char    *optionframe;
     int     optionunits = METTERS;
     int     optionkap = NORMAL;
     int     optionwgs84 = 0;
@@ -2189,6 +2267,7 @@ int main (int argc, char *argv[])
 
     optionsd = (char *)"UNKNOWN" ;
     optionpal = NULL;
+    optionframe = NULL;
 
     typein = typeheader = typeout = FIF_UNKNOWN;
     lat0 = lat1 = lon0 = lon1 = HUGE_VAL;
@@ -2215,6 +2294,13 @@ int main (int argc, char *argv[])
             if (c == 'W')
             {
                 optionwgs84 = 1;
+                continue;
+            }
+            if (c == 'R')
+            {
+                if (argc > 1) optionframe = argv[1];
+                argc--;
+                argv++;
                 continue;
             }
             if (c == 'S')
@@ -2335,7 +2421,7 @@ int main (int argc, char *argv[])
                 typein = (int)FreeImage_GetFileType(filein,0);
                 optcolor = COLOR_NONE;
                 if (optionpal) optcolor = findoptlist(listoptcolor,optionpal);
-                result = imgtokap(typein,filein,lat0,lon0,pixpos0x,pixpos0y,lat1,lon1,pixpos1x,pixpos1y,optionkap,optcolor,optiontitle,optionunits,optionsd,optionwgs84,fileout);
+                result = imgtokap(typein,filein,lat0,lon0,pixpos0x,pixpos0y,lat1,lon1,pixpos1x,pixpos1y,optionkap,optcolor,optiontitle,optionunits,optionsd,optionwgs84,optionframe,fileout);
                 break;
 
             case FIF_KAP :
@@ -2404,7 +2490,7 @@ int main (int argc, char *argv[])
                         result = 1;
                         break;
                     }
-                    result = imgtokap(typein,filein,lat0,lon0,pixpos0x,pixpos0y,lat1,lon1,pixpos1x,pixpos1y,optionkap,optcolor,optiontitle,optionunits,optionsd,optionwgs84,fileout);
+                    result = imgtokap(typein,filein,lat0,lon0,pixpos0x,pixpos0y,lat1,lon1,pixpos1x,pixpos1y,optionkap,optcolor,optiontitle,optionunits,optionsd,optionwgs84,optionframe,fileout);
                 break;
         }
         FreeImage_DeInitialise();
@@ -2439,17 +2525,21 @@ int main (int argc, char *argv[])
 		fprintf(stderr, "\nWGS84 positioning :\n");
 		fprintf(stderr, "\tlat0 lon0 is a left,top point\n");
 		fprintf(stderr, "\tlat1 lon1 is a right,bottom point\n");
-		fprintf(stderr, "\tlat to be beetwen -85 and +85 degree\n");
-		fprintf(stderr, "\tlon to be beetwen -180 and +180 degree\n");
+		fprintf(stderr, "\tlat to be between -85 and +85 degree\n");
+		fprintf(stderr, "\tlon to be between -180 and +180 degree\n");
 		fprintf(stderr, "\t    different format are accepted : -1.22  1°10'20.123N  -1d22.123 ...\n");
 		fprintf(stderr, "\tx;y can be used if lat lon is not a left, top and right, bottom point\n");
 		fprintf(stderr, "\t    lat0 lon0 x0;y0 must be in the left, upper third of the image\n");
 		fprintf(stderr, "\t    lat1 lon1 x1;y1 must be in the right, lower third of the image\n");
 		fprintf(stderr, "Options :\n");
-        fprintf(stderr,  "\t-n  : Force compatibilty all KAP software, max 127 colors\n" );
-        fprintf(stderr,  "\t-f  : fix units to FATHOMS\n" );
         fprintf(stderr,  "\t-w  : no image size extension to WGS84 because image is already WGS84\n" );
-        fprintf(stderr,  "\t-s name : fix souding datum\n" );
+        fprintf(stderr,  "\t-r x0f;y0f-x1f;y1f  \"2 pixel points -> 4 * PLY\"\n");
+        fprintf(stderr,  "\t    : define a rectangle area in the image visible from the .kap\n" );
+        fprintf(stderr,  "\t-r x0f;y0f-x1f;y1f-x2f;y2f-x3f;y3f... \"3 to 10 pixel points -> PLY\"\n");
+        fprintf(stderr,  "\t    : define a up to 10 edges polygon visible from the .kap\n" );
+        fprintf(stderr,  "\t-n  : Force compatibility all KAP software, max 127 colors\n" );
+        fprintf(stderr,  "\t-f  : fix units to FATHOMS\n" );
+        fprintf(stderr,  "\t-s name : fix sounding datum\n" );
         fprintf(stderr,  "\t-t title : change name of map\n" );
         fprintf(stderr,  "\t-p color : color of map\n" );
         fprintf(stderr,  "\t   color (Kap to image) : ALL|RGB|DAY|DSK|NGT|NGR|GRY|PRC|PRG\n" );
